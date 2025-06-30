@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text-to-Speech Reader</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/2.1.5/tesseract.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .icon {
+            width: 24px;
+            height: 24px;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            color: #666;
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .tab:hover:not(.active) {
+            background: #e9ecef;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 20px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 1.1em;
+            line-height: 1.6;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+            font-family: inherit;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .file-upload {
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+
+        .file-upload:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .file-upload.dragover {
+            border-color: #667eea;
+            background: #e8f2ff;
+            transform: scale(1.02);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-text {
+            font-size: 1.2em;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        .image-preview {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .preview-img {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .controls {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .control-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .control-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            font-weight: 600;
+            color: #333;
+            font-size: 0.9em;
+        }
+
+        select, input[type="range"] {
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+
+        select:focus, input[type="range"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            color: #333;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+            color: #333;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .progress {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .status {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .char-counter {
+            text-align: right;
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .highlight {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%);
+            padding: 2px 4px;
+            border-radius: 3px;
+            transition: all 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .control-group {
+                grid-template-columns: 1fr;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            button {
+                width: 100%;
+            }
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵 Text-to-Speech Reader</h1>
+            <p>Convert text or images to natural speech with advanced controls</p>
+        </div>
+
+        <div class="content">
+            <div class="input-section">
+                <h2 class="section-title">
+                    📝 Input Source
+                </h2>
+
+                <div class="tabs">
+                    <button class="tab active" onclick="switchTab('text')">Text Input</button>
+                    <button class="tab" onclick="switchTab('image')">Image Upload (OCR)</button>
+                </div>
+
+                <div id="text-tab" class="tab-content active">
+                    <textarea 
+                        id="textInput" 
+                        placeholder="Type or paste your text here... You can enter any text you want to be read aloud."
+                        oninput="updateCharCounter()"
+                    ></textarea>
+                    <div class="char-counter">
+                        <span id="charCount">0</span> characters
+                    </div>
+                </div>
+
+                <div id="image-tab" class="tab-content">
+                    <div class="file-upload" onclick="document.getElementById('imageInput').click()" 
+                         ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                        <div style="font-size: 3em;">📷</div>
+                        <div class="upload-text">
+                            Click to upload an image or drag & drop<br>
+                            <small>Supports: JPG, PNG, GIF, WEBP</small>
+                        </div>
+                    </div>
+                    <input type="file" id="imageInput" class="file-input" accept="image/*" onchange="handleImageUpload(event)">
+                    <div id="imagePreview" class="image-preview"></div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <h2 class="section-title">
+                    🎛️ Speech Controls
+                </h2>
+
+                <div class="control-group">
+                    <div class="control-item">
+                        <label for="voiceSelect">Voice:</label>
+                        <select id="voiceSelect"></select>
+                    </div>
+                    <div class="control-item">
+                        <label for="rateRange">Speed: <span id="rateValue">1.0x</span></label>
+                        <input type="range" id="rateRange" min="0.5" max="2" step="0.1" value="1" oninput="updateRateValue()">
+                    </div>
+                    <div class="control-item">
+                        <label for="pitchRange">Pitch: <span id="pitchValue">1.0</span></label>
+                        <input type="range" id="pitchRange" min="0.5" max="2" step="0.1" value="1" oninput="updatePitchValue()">
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn-primary" onclick="speakText()">▶️ Play</button>
+                    <button class="btn-secondary" onclick="pauseSpeech()">⏸️ Pause</button>
+                    <button class="btn-secondary" onclick="resumeSpeech()">▶️ Resume</button>
+                    <button class="btn-danger" onclick="stopSpeech()">⏹️ Stop</button>
+                </div>
+
+                <div class="progress">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+            </div>
+
+            <div id="status" class="status" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        let speechSynthesis = window.speechSynthesis;
+        let currentUtterance = null;
+        let voices = [];
+        let isPlaying = false;
+        let isPaused = false;
+        let currentWordIndex = 0;
+        let textWords = [];
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            populateVoices();
+            if (speechSynthesis.onvoiceschanged !== undefined) {
+                speechSynthesis.onvoiceschanged = populateVoices;
+            }
+        });
+
+        function populateVoices() {
+            voices = speechSynthesis.getVoices();
+            const voiceSelect = document.getElementById('voiceSelect');
+            voiceSelect.innerHTML = '';
+
+            voices.forEach((voice, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `${voice.name} (${voice.lang})`;
+                if (voice.default) {
+                    option.selected = true;
+                }
+                voiceSelect.appendChild(option);
+            });
+        }
+
+        function switchTab(tabName) {
+            // Remove active class from all tabs and contents
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            // Add active class to selected tab and content
+            event.target.classList.add('active');
+            document.getElementById(tabName + '-tab').classList.add('active');
+        }
+
+        function updateCharCounter() {
+            const text = document.getElementById('textInput').value;
+            document.getElementById('charCount').textContent = text.length;
+        }
+
+        function updateRateValue() {
+            const rate = document.getElementById('rateRange').value;
+            document.getElementById('rateValue').textContent = rate + 'x';
+        }
+
+        function updatePitchValue() {
+            const pitch = document.getElementById('pitchRange').value;
+            document.getElementById('pitchValue').textContent = pitch;
+        }
+
+        function showStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+            
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 5000);
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.currentTarget.classList.add('dragover');
+        }
+
+        function handleDragLeave(event) {
+            event.currentTarget.classList.remove('dragover');
+        }
+
+        function handleDrop(event) {
+            event.preventDefault();
+            event.currentTarget.classList.remove('dragover');
+            
+            const files = event.dataTransfer.files;
+            if (files.length > 0) {
+                processImageFile(files[0]);
+            }
+        }
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                processImageFile(file);
+            }
+        }
+
+        function processImageFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showStatus('Please select a valid image file.', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                displayImagePreview(e.target.result);
+                extractTextFromImage(e.target.result);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function displayImagePreview(imageSrc) {
+            const preview = document.getElementById('imagePreview');
+            preview.innerHTML = `
+                <img src="${imageSrc}" alt="Uploaded image" class="preview-img">
+                <p style="margin-top: 10px; color: #666;">Extracting text from image...</p>
+            `;
+        }
+
+        function extractTextFromImage(imageSrc) {
+            showStatus('Processing image... This may take a few moments.', 'info');
+            
+            Tesseract.recognize(
+                imageSrc,
+                'eng',
+                {
+                    logger: function(m) {
+                        if (m.status === 'recognizing text') {
+                            const progress = Math.round(m.progress * 100);
+                            document.getElementById('progressBar').style.width = progress + '%';
+                        }
+                    }
+                }
+            ).then(function(result) {
+                const extractedText = result.data.text.trim();
+                
+                if (extractedText) {
+                    document.getElementById('textInput').value = extractedText;
+                    updateCharCounter();
+                    showStatus(`Successfully extracted ${extractedText.length} characters from the image!`, 'success');
+                    
+                    // Switch to text tab to show the result
+                    switchTabProgrammatically('text');
+                } else {
+                    showStatus('No text was found in the image. Please try with a clearer image.', 'error');
+                }
+                
+                document.getElementById('progressBar').style.width = '0%';
+            }).catch(function(error) {
+                console.error('OCR Error:', error);
+                showStatus('Error processing image. Please try again.', 'error');
+                document.getElementById('progressBar').style.width = '0%';
+            });
+        }
+
+        function switchTabProgrammatically(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            document.querySelector(`[onclick="switchTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(tabName + '-tab').classList.add('active');
+        }
+
+        function speakText() {
+            const text = document.getElementById('textInput').value.trim();
+            
+            if (!text) {
+                showStatus('Please enter some text to speak.', 'error');
+                return;
+            }
+
+            stopSpeech(); // Stop any current speech
+
+            currentUtterance = new SpeechSynthesisUtterance(text);
+            const selectedVoiceIndex = document.getElementById('voiceSelect').value;
+            const rate = parseFloat(document.getElementById('rateRange').value);
+            const pitch = parseFloat(document.getElementById('pitchRange').value);
+
+            if (voices[selectedVoiceIndex]) {
+                currentUtterance.voice = voices[selectedVoiceIndex];
+            }
+            
+            currentUtterance.rate = rate;
+            currentUtterance.pitch = pitch;
+
+            currentUtterance.onstart = function() {
+                isPlaying = true;
+                isPaused = false;
+                showStatus('🎵 Speaking...', 'info');
+            };
+
+            currentUtterance.onend = function() {
+                isPlaying = false;
+                isPaused = false;
+                document.getElementById('progressBar').style.width = '0%';
+                showStatus('✅ Finished speaking!', 'success');
+            };
+
+            currentUtterance.onerror = function(event) {
+                isPlaying = false;
+                isPaused = false;
+                showStatus('❌ Error occurred while speaking: ' + event.error, 'error');
+            };
+
+            speechSynthesis.speak(currentUtterance);
+        }
+
+        function pauseSpeech() {
+            if (isPlaying && !isPaused) {
+                speechSynthesis.pause();
+                isPaused = true;
+                showStatus('⏸️ Speech paused', 'info');
+            }
+        }
+
+        function resumeSpeech() {
+            if (isPaused) {
+                speechSynthesis.resume();
+                isPaused = false;
+                showStatus('▶️ Speech resumed', 'info');
+            }
+        }
+
+        function stopSpeech() {
+            speechSynthesis.cancel();
+            isPlaying = false;
+            isPaused = false;
+            document.getElementById('progressBar').style.width = '0%';
+            
+            if (currentUtterance) {
+                showStatus('⏹️ Speech stopped', 'info');
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(event) {
+            if (event.ctrlKey || event.metaKey) {
+                switch(event.key) {
+                    case 'Enter':
+                        event.preventDefault();
+                        speakText();
+                        break;
+                    case ' ':
+                        event.preventDefault();
+                        if (isPlaying && !isPaused) {
+                            pauseSpeech();
+                        } else if (isPaused) {
+                            resumeSpeech();
+                        }
+                        break;
+                    case 'Escape':
+                        event.preventDefault();
+                        stopSpeech();
+                        break;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
